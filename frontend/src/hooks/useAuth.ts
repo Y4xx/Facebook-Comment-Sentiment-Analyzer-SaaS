@@ -11,7 +11,7 @@ export function useAuth() {
     queryKey: ["user"],
     queryFn: async () => {
       const userData = await authApi.getMe();
-      console.log("AUTH USER FETCHED", userData);
+      console.log("AUTH USER FETCHED", { id: userData.id, email: userData.email });
       return userData;
     },
     retry: false,
@@ -23,7 +23,7 @@ export function useAuth() {
     onSuccess: (data) => {
       console.log("LOGIN SUCCESS");
       localStorage.setItem("access_token", data.access_token);
-      console.log("TOKEN STORED:", data.access_token);
+      console.log("TOKEN STORED:", data.access_token.substring(0, 20) + "...");
       queryClient.invalidateQueries({ queryKey: ["user"] });
       navigate("/dashboard");
     },
