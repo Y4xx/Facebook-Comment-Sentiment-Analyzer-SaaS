@@ -9,7 +9,11 @@ export function useAuth() {
 
   const { data: user, isLoading, error } = useQuery({
     queryKey: ["user"],
-    queryFn: authApi.getMe,
+    queryFn: async () => {
+      const userData = await authApi.getMe();
+      console.log("AUTH USER FETCHED", { id: userData.id, email: userData.email });
+      return userData;
+    },
     retry: false,
     enabled: !!localStorage.getItem("access_token"),
   });
@@ -17,7 +21,9 @@ export function useAuth() {
   const loginMutation = useMutation({
     mutationFn: authApi.login,
     onSuccess: (data) => {
+      console.log("LOGIN SUCCESS");
       localStorage.setItem("access_token", data.access_token);
+      console.log("TOKEN STORED:", data.access_token.substring(0, 20) + "...");
       queryClient.invalidateQueries({ queryKey: ["user"] });
       navigate("/dashboard");
     },
@@ -32,6 +38,7 @@ export function useAuth() {
 
   const logout = () => {
     localStorage.removeItem("access_token");
+    console.log("LOGOUT EVENT");
     queryClient.clear();
     navigate("/login");
   };
