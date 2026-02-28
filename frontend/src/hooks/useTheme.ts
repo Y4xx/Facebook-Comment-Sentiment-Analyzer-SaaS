@@ -1,26 +1,53 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+
+type ThemeMode = "light" | "dark" | "system";
 
 export function useTheme() {
-  const [isDark, setIsDark] = useState(() => {
+  const [mode, setMode] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem("theme");
-    if (saved) {
-      return saved === "dark";
+    if (saved === "light" || saved === "dark" || saved === "system") {
+      return saved;
     }
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return "system";
   });
+
+  const getSystemTheme = useCallback(() => {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }, []);
+
+  const isDark = mode === "system" ? getSystemTheme() : mode === "dark";
 
   useEffect(() => {
     const root = window.document.documentElement;
-    if (isDark) {
-      root.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      root.classList.remove("dark");
-      localStorage.setItem("theme", "light");
+    
+    const applyTheme = () => {
+      const shouldBeDark = mode === "system" ? getSystemTheme() : mode === "dark";
+      if (shouldBeDark) {
+        root.classList.add("dark");
+      } else {
+        root.classList.remove("dark");
+      }
+    };
+
+    applyTheme();
+    localStorage.setItem("theme", mode);
+
+    // Listen for system theme changes
+    if (mode === "system") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handler = () => applyTheme();
+      mediaQuery.addEventListener("change", handler);
+      return () => mediaQuery.removeEventListener("change", handler);
     }
-  }, [isDark]);
+  }, [mode, getSystemTheme]);
 
-  const toggleTheme = () => setIsDark(!isDark);
+  const toggleTheme = () => {
+    setMode(prev => prev === "dark" ? "light" : "dark");
+  };
 
-  return { isDark, toggleTheme };
+  const setTheme = (newMode: ThemeMode) => {
+    setMode(newMode);
+  };
+
+  return { isDark, mode, toggleTheme, setTheme };
 }

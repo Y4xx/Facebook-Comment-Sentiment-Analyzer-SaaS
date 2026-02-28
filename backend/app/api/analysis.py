@@ -7,8 +7,6 @@ from slowapi.util import get_remote_address
 from app.database import get_db
 from app.schemas.analysis import AnalysisCreate, AnalysisResponse, AnalysisListResponse
 from app.services.analysis import AnalysisService
-from app.services.auth import get_current_user
-from app.models.user import User
 
 router = APIRouter(prefix="/analyses", tags=["Analysis"])
 
@@ -19,8 +17,7 @@ limiter = Limiter(key_func=get_remote_address)
 @router.post("", response_model=AnalysisResponse, status_code=status.HTTP_201_CREATED)
 async def analyze_post(
     analysis_data: AnalysisCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """
     Analyze sentiment of comments on a Facebook post.
@@ -36,7 +33,7 @@ async def analyze_post(
     service = AnalysisService(db)
     
     try:
-        analysis = service.analyze_post(current_user.id, analysis_data.facebook_post_url)
+        analysis = service.analyze_post(analysis_data.facebook_post_url)
         return analysis
     except Exception as e:
         raise HTTPException(
@@ -49,25 +46,23 @@ async def analyze_post(
 async def get_analyses(
     skip: int = 0,
     limit: int = 50,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """
-    Get all analyses for the current user.
+    Get all analyses.
     
     - **skip**: Number of records to skip (pagination)
     - **limit**: Maximum number of records to return
     """
     service = AnalysisService(db)
-    analyses = service.get_user_analyses(current_user.id, skip, limit)
+    analyses = service.get_all_analyses(skip, limit)
     return analyses
 
 
 @router.get("/{analysis_id}", response_model=AnalysisResponse)
 async def get_analysis(
     analysis_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """
     Get a specific analysis by ID.
@@ -75,7 +70,7 @@ async def get_analysis(
     - **analysis_id**: The ID of the analysis to retrieve
     """
     service = AnalysisService(db)
-    analysis = service.get_analysis_by_id(current_user.id, analysis_id)
+    analysis = service.get_analysis_by_id(analysis_id)
     
     if not analysis:
         raise HTTPException(
