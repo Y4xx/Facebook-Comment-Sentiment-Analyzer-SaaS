@@ -67,7 +67,7 @@ class AnalysisService:
         text = ' '.join(text.split())
         return text.strip()
     
-    def analyze_post(self, user_id: int, post_url: str) -> Analysis:
+    def analyze_post(self, post_url: str) -> Analysis:
         """
         Analyze sentiment of all comments in a Facebook post.
         Returns the Analysis object with all results.
@@ -101,7 +101,6 @@ class AnalysisService:
         
         # Create analysis record
         analysis = Analysis(
-            user_id=user_id,
             post_url=post_url,
             overall_sentiment=overall_sentiment,
             overall_score=avg_score,
@@ -128,21 +127,20 @@ class AnalysisService:
         
         return analysis
     
-    def get_user_analyses(self, user_id: int, skip: int = 0, limit: int = 50) -> List[Analysis]:
-        """Get all analyses for a user."""
+    def get_all_analyses(self, skip: int = 0, limit: int = 50) -> List[Analysis]:
+        """Get all analyses."""
         return (
             self.db.query(Analysis)
-            .filter(Analysis.user_id == user_id)
             .order_by(Analysis.created_at.desc())
             .offset(skip)
             .limit(limit)
             .all()
         )
     
-    def get_analysis_by_id(self, user_id: int, analysis_id: int) -> Analysis:
-        """Get a specific analysis by ID for a user."""
+    def get_analysis_by_id(self, analysis_id: int) -> Analysis:
+        """Get a specific analysis by ID."""
         return (
             self.db.query(Analysis)
-            .filter(Analysis.id == analysis_id, Analysis.user_id == user_id)
+            .filter(Analysis.id == analysis_id)
             .first()
         )

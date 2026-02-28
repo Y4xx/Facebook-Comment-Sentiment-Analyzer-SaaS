@@ -1,5 +1,9 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useAnalysis } from "@/hooks";
+import { PageHeader } from "@/components/PageHeader";
+import { SentimentPieChart, SentimentBarChart } from "@/components/SentimentChart";
+import { CardSkeleton, ChartSkeleton, TableSkeleton } from "@/components/LoadingSkeleton";
+import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,33 +18,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  ResponsiveContainer,
-  Legend,
-  Tooltip,
-} from "recharts";
-import {
-  Loader2,
   ArrowLeft,
   Download,
   ThumbsUp,
   ThumbsDown,
   Minus,
   Link as LinkIcon,
+  Calendar,
+  MessageSquare,
+  AlertCircle,
+  ExternalLink,
 } from "lucide-react";
-
-const COLORS = {
-  positive: "#22c55e",
-  neutral: "#eab308",
-  negative: "#ef4444",
-};
 
 export function AnalysisDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -69,35 +57,59 @@ export function AnalysisDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardContent className="pt-6">
+              <ChartSkeleton />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <ChartSkeleton />
+            </CardContent>
+          </Card>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <TableSkeleton rows={5} columns={3} />
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   if (error || !analysis) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-        <p className="text-muted-foreground">Analysis not found</p>
-        <Button variant="outline" onClick={() => navigate("/dashboard")}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Dashboard
-        </Button>
+      <div className="space-y-6">
+        <PageHeader title="Analysis Not Found" />
+        <Card>
+          <CardContent className="py-0">
+            <EmptyState
+              icon={AlertCircle}
+              title="Analysis not found"
+              description="The analysis you're looking for doesn't exist or has been deleted."
+              action={{
+                label: "Back to Dashboard",
+                onClick: () => navigate("/"),
+              }}
+            />
+          </CardContent>
+        </Card>
       </div>
     );
   }
-
-  const pieData = [
-    { name: "Positive", value: analysis.positive_count, color: COLORS.positive },
-    { name: "Neutral", value: analysis.neutral_count, color: COLORS.neutral },
-    { name: "Negative", value: analysis.negative_count, color: COLORS.negative },
-  ];
-
-  const barData = [
-    { name: "Positive", count: analysis.positive_count, fill: COLORS.positive },
-    { name: "Neutral", count: analysis.neutral_count, fill: COLORS.neutral },
-    { name: "Negative", count: analysis.negative_count, fill: COLORS.negative },
-  ];
 
   const getPercentage = (count: number) => {
     if (analysis.total_comments === 0) return 0;
@@ -127,34 +139,34 @@ export function AnalysisDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/dashboard")}
-            className="mb-2"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Button>
-          <h1 className="text-2xl font-bold">Analysis Details</h1>
-          <p className="text-muted-foreground flex items-center gap-2 mt-1">
+      <PageHeader
+        title="Analysis Details"
+        description={
+          <span className="flex items-center gap-2 text-sm">
             <LinkIcon className="h-4 w-4" />
             <span className="truncate max-w-[400px]">{analysis.post_url}</span>
-          </p>
+          </span>
+        }
+      >
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => navigate("/")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <Button onClick={handleExportCSV}>
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
         </div>
-        <Button onClick={handleExportCSV}>
-          <Download className="mr-2 h-4 w-4" />
-          Export CSV
-        </Button>
-      </div>
+      </PageHeader>
 
       {/* Overview Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Overall Sentiment</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Overall Sentiment
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -168,9 +180,10 @@ export function AnalysisDetailPage() {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        
+        <Card className="hover:shadow-md transition-shadow border-l-4 border-l-green-500">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-green-500">
+            <CardTitle className="text-sm font-medium text-green-600">
               Positive
             </CardTitle>
           </CardHeader>
@@ -181,13 +194,14 @@ export function AnalysisDetailPage() {
               className="mt-2 h-2"
             />
             <p className="text-sm text-muted-foreground mt-1">
-              {getPercentage(analysis.positive_count).toFixed(1)}%
+              {getPercentage(analysis.positive_count).toFixed(1)}% of total
             </p>
           </CardContent>
         </Card>
-        <Card>
+        
+        <Card className="hover:shadow-md transition-shadow border-l-4 border-l-yellow-500">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-yellow-500">
+            <CardTitle className="text-sm font-medium text-yellow-600">
               Neutral
             </CardTitle>
           </CardHeader>
@@ -198,13 +212,14 @@ export function AnalysisDetailPage() {
               className="mt-2 h-2"
             />
             <p className="text-sm text-muted-foreground mt-1">
-              {getPercentage(analysis.neutral_count).toFixed(1)}%
+              {getPercentage(analysis.neutral_count).toFixed(1)}% of total
             </p>
           </CardContent>
         </Card>
-        <Card>
+        
+        <Card className="hover:shadow-md transition-shadow border-l-4 border-l-red-500">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-red-500">
+            <CardTitle className="text-sm font-medium text-red-600">
               Negative
             </CardTitle>
           </CardHeader>
@@ -215,111 +230,86 @@ export function AnalysisDetailPage() {
               className="mt-2 h-2"
             />
             <p className="text-sm text-muted-foreground mt-1">
-              {getPercentage(analysis.negative_count).toFixed(1)}%
+              {getPercentage(analysis.negative_count).toFixed(1)}% of total
             </p>
           </CardContent>
         </Card>
       </div>
 
       {/* Tabs for Charts and Comments */}
-      <Tabs defaultValue="charts">
-        <TabsList>
-          <TabsTrigger value="charts">Charts</TabsTrigger>
-          <TabsTrigger value="comments">
+      <Tabs defaultValue="charts" className="space-y-4">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="charts" className="gap-2">
+            Charts
+          </TabsTrigger>
+          <TabsTrigger value="comments" className="gap-2">
+            <MessageSquare className="h-4 w-4" />
             Comments ({analysis.total_comments})
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="charts">
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Pie Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Sentiment Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) =>
-                        `${name ?? ""}: ${((percent ?? 0) * 100).toFixed(0)}%`
-                      }
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Bar Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Comment Count by Sentiment</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={barData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                      {barData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+        <TabsContent value="charts" className="space-y-4">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <SentimentPieChart
+              data={{
+                positive: analysis.positive_count,
+                neutral: analysis.neutral_count,
+                negative: analysis.negative_count,
+              }}
+            />
+            <SentimentBarChart
+              data={{
+                positive: analysis.positive_count,
+                neutral: analysis.neutral_count,
+                negative: analysis.negative_count,
+              }}
+            />
           </div>
         </TabsContent>
 
         <TabsContent value="comments">
           <Card>
-            <CardHeader>
-              <CardTitle>Comment-Level Analysis</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Comment-Level Analysis
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {analysis.comments && analysis.comments.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50%]">Comment</TableHead>
-                      <TableHead>Sentiment</TableHead>
-                      <TableHead className="text-right">Score</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {analysis.comments.map((comment) => (
-                      <TableRow key={comment.id}>
-                        <TableCell className="max-w-[400px]">
-                          <p className="line-clamp-2">{comment.comment_text}</p>
-                        </TableCell>
-                        <TableCell>{getSentimentBadge(comment.sentiment)}</TableCell>
-                        <TableCell className="text-right font-medium">
-                          {comment.score}/5
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[50%]">Comment</TableHead>
+                        <TableHead>Sentiment</TableHead>
+                        <TableHead className="text-right">Score</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {analysis.comments.map((comment) => (
+                        <TableRow key={comment.id} className="hover:bg-muted/50">
+                          <TableCell className="max-w-[400px]">
+                            <p className="line-clamp-2">{comment.comment_text}</p>
+                          </TableCell>
+                          <TableCell>{getSentimentBadge(comment.sentiment)}</TableCell>
+                          <TableCell className="text-right font-medium">
+                            <span className="inline-flex items-center gap-1">
+                              {comment.score.toFixed(1)}
+                              <span className="text-muted-foreground text-xs">/5</span>
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  No comments to display
-                </p>
+                <EmptyState
+                  icon={MessageSquare}
+                  title="No comments"
+                  description="No comments were found for this analysis"
+                />
               )}
             </CardContent>
           </Card>
@@ -328,35 +318,59 @@ export function AnalysisDetailPage() {
 
       {/* Metadata */}
       <Card>
-        <CardHeader>
-          <CardTitle>Analysis Metadata</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Analysis Metadata</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Analysis ID</p>
-              <p className="font-medium">{analysis.id}</p>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-muted">
+                <span className="text-sm font-bold">ID</span>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Analysis ID</p>
+                <p className="font-medium">#{analysis.id}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Created At</p>
-              <p className="font-medium">
-                {new Date(analysis.created_at).toLocaleString()}
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-muted">
+                <Calendar className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Created At</p>
+                <p className="font-medium">
+                  {new Date(analysis.created_at).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Comments</p>
-              <p className="font-medium">{analysis.total_comments}</p>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-muted">
+                <MessageSquare className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total Comments</p>
+                <p className="font-medium">{analysis.total_comments}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Post URL</p>
-              <a
-                href={analysis.post_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-primary hover:underline truncate block"
-              >
-                View Post
-              </a>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-muted">
+                <ExternalLink className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Post URL</p>
+                <a
+                  href={analysis.post_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-primary hover:underline text-sm"
+                >
+                  View Original Post
+                </a>
+              </div>
             </div>
           </div>
         </CardContent>

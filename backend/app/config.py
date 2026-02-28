@@ -1,5 +1,4 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
 
 
 class Settings(BaseSettings):
@@ -7,12 +6,6 @@ class Settings(BaseSettings):
     
     # Database
     DATABASE_URL: str = "sqlite:///./sentiment_analyzer.db"
-    
-    # JWT - IMPORTANT: Change SECRET_KEY in production!
-    # Generate a secure key with: python -c "import secrets; print(secrets.token_hex(32))"
-    SECRET_KEY: str = "your-secret-key-change-in-production"
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 10

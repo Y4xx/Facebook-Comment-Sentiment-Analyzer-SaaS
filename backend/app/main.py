@@ -7,7 +7,6 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.database import engine, Base
-from app.api.auth import router as auth_router
 from app.api.analysis import router as analysis_router
 
 # Create database tables
@@ -49,7 +48,6 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Include routers
-app.include_router(auth_router)
 app.include_router(analysis_router)
 
 
