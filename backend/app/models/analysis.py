@@ -10,6 +10,7 @@ class Analysis(Base):
     __tablename__ = "analyses"
     
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=True, index=True)
     post_url = Column(String(500), nullable=False)
     overall_sentiment = Column(String(50), nullable=True)
     overall_score = Column(Float, nullable=True)
