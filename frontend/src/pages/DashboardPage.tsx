@@ -1,6 +1,5 @@
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAnalyses, useCreateAnalysis } from "@/hooks";
+import { useAnalyses } from "@/hooks";
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardCard } from "@/components/DashboardCard";
 import { EmptyState } from "@/components/EmptyState";
@@ -32,21 +31,7 @@ import {
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { data: analyses, isLoading, refetch } = useAnalyses();
-  const createAnalysis = useCreateAnalysis();
-
-  // Auto-create demo analysis on first load if no analyses exist
-  useEffect(() => {
-    const hasShownDemo = sessionStorage.getItem("demo_shown");
-    if (!isLoading && analyses && analyses.length === 0 && !hasShownDemo && !createAnalysis.isPending) {
-      sessionStorage.setItem("demo_shown", "true");
-      // Create a demo analysis automatically
-      createAnalysis.mutate(
-        { facebook_post_url: "https://facebook.com/demo/posts/123456" },
-        { onSuccess: () => refetch() }
-      );
-    }
-  }, [analyses, isLoading, createAnalysis, refetch]);
+  const { data: analyses, isLoading } = useAnalyses();
 
   // Calculate aggregate statistics
   const stats = analyses?.reduce(

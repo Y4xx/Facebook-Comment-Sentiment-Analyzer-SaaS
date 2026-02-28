@@ -6,12 +6,12 @@ import { Moon, Sun, Monitor, Palette, Bell, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function SettingsPage() {
-  const { isDark, toggleTheme } = useTheme();
+  const { mode, setTheme } = useTheme();
 
   const themes = [
-    { id: "light", name: "Light", icon: Sun },
-    { id: "dark", name: "Dark", icon: Moon },
-    { id: "system", name: "System", icon: Monitor },
+    { id: "light" as const, name: "Light", icon: Sun },
+    { id: "dark" as const, name: "Dark", icon: Moon },
+    { id: "system" as const, name: "System", icon: Monitor },
   ];
 
   return (
@@ -40,14 +40,10 @@ export function SettingsPage() {
                 {themes.map((theme) => (
                   <button
                     key={theme.id}
-                    onClick={() => {
-                      if ((theme.id === "dark" && !isDark) || (theme.id === "light" && isDark)) {
-                        toggleTheme();
-                      }
-                    }}
+                    onClick={() => setTheme(theme.id)}
                     className={cn(
                       "flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all hover:bg-muted",
-                      (theme.id === "dark" && isDark) || (theme.id === "light" && !isDark)
+                      mode === theme.id
                         ? "border-primary bg-primary/5"
                         : "border-transparent bg-muted/50"
                     )}

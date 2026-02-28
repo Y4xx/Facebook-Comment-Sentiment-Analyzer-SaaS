@@ -71,7 +71,6 @@ export function SentimentPieChart({ data, title = "Sentiment Distribution" }: Se
                 `${name ?? ""}: ${((percent ?? 0) * 100).toFixed(0)}%`
               }
               outerRadius={80}
-              innerRadius={40}
               fill="#8884d8"
               dataKey="value"
               animationBegin={0}
