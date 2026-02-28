@@ -54,8 +54,6 @@ class AnalysisService:
             "Perfect! Just what I needed!",
             "C'est vraiment magnifique! J'adore!",  # French positive
             "Je ne suis pas convaincu.",  # French neutral
-            "هذا رائع جدا",  # Arabic positive
-            "لا أعتقد أن هذا جيد",  # Arabic negative
         ]
         return mock_comments
     
