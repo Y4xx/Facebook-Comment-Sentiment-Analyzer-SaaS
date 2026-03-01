@@ -1,5 +1,6 @@
 import re
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
+from urllib.parse import urlparse, parse_qs
 from sqlalchemy.orm import Session
 import httpx
 
@@ -38,6 +39,214 @@ class AnalysisService:
         # Return a hash of the URL as fallback
         return str(hash(url) % 10**8)
     
+    def _is_share_url(self, url: str) -> bool:
+        """Check if the URL is a Facebook share URL that needs resolution."""
+        return '/share/p/' in url or '/share/r/' in url
+    
+    def _extract_share_hash(self, url: str) -> tuple:
+        """
+        Extract the share type and hash from a Facebook share URL.
+        
+        Args:
+            url: The Facebook share URL
+            
+        Returns:
+            A tuple of (share_type, hash) where share_type is 'p' or 'r'
+            
+        Raises:
+            ValueError: If the URL is not a valid share URL
+        """
+        # Match /share/p/{hash} or /share/r/{hash}
+        match = re.search(r'/share/(p|r)/([\w]+)', url)
+        if not match:
+            raise ValueError(f"Invalid share URL format: {url}")
+        return match.group(1), match.group(2)
+    
+    def _resolve_share_url(self, url: str) -> str:
+        """
+        Resolve a Facebook share URL to its final destination URL.
+        
+        Share URLs (/share/p/{hash} and /share/r/{hash}) are short links that
+        redirect to the actual post URL. This method follows the redirects
+        to get the final URL.
+        
+        Args:
+            url: The Facebook share URL to resolve
+            
+        Returns:
+            The resolved final URL after following redirects
+            
+        Raises:
+            ValueError: If the URL cannot be resolved or is not a valid Facebook URL
+        """
+        # Extract share hash and construct a safe URL to prevent SSRF
+        share_type, share_hash = self._extract_share_hash(url)
+        
+        # Construct a safe Facebook URL using only the extracted hash
+        # This prevents SSRF by ensuring we only request from www.facebook.com
+        safe_url = f"https://www.facebook.com/share/{share_type}/{share_hash}/"
+        
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        
+        # Define allowed Facebook domains for redirect validation
+        allowed_domains = (
+            'facebook.com',
+            'www.facebook.com',
+            'web.facebook.com',
+            'm.facebook.com',
+        )
+        
+        try:
+            with httpx.Client(follow_redirects=True, timeout=10.0) as client:
+                response = client.get(safe_url, headers=headers)
+                
+                if response.status_code != 200:
+                    raise ValueError(
+                        f"Failed to resolve share URL: HTTP {response.status_code}"
+                    )
+                
+                final_url = str(response.url)
+                
+                # Validate the final URL is a Facebook URL
+                try:
+                    parsed = urlparse(final_url)
+                    host = parsed.netloc.lower()
+                    if parsed.scheme not in ('http', 'https'):
+                        raise ValueError(f"Invalid scheme in resolved URL: {final_url}")
+                    if not any(host == d or host.endswith('.' + d) for d in allowed_domains):
+                        raise ValueError(
+                            f"Share URL redirected to non-Facebook URL: {final_url}"
+                        )
+                except Exception as e:
+                    if isinstance(e, ValueError):
+                        raise
+                    raise ValueError(f"Invalid resolved URL: {final_url}")
+                
+                return final_url
+                
+        except httpx.TimeoutException:
+            raise ValueError(
+                f"Timeout while resolving share URL: {url}"
+            )
+        except httpx.RequestError as e:
+            raise ValueError(
+                f"Failed to resolve share URL '{url}': {str(e)}"
+            )
+    
+    def _resolve_page_name_to_id(self, page_name: str) -> Optional[str]:
+        """
+        Resolve a Facebook page name to its page ID using the Graph API.
+        
+        Args:
+            page_name: The page username/name to resolve
+            
+        Returns:
+            The page ID or None if resolution fails
+        """
+        if not settings.FACEBOOK_ACCESS_TOKEN:
+            return None
+            
+        api_url = (
+            f"https://graph.facebook.com/{settings.FACEBOOK_API_VERSION}/"
+            f"{page_name}"
+        )
+        
+        params = {
+            "fields": "id",
+            "access_token": settings.FACEBOOK_ACCESS_TOKEN,
+        }
+        
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                response = client.get(api_url, params=params)
+                if response.status_code == 200:
+                    data = response.json()
+                    return data.get("id")
+        except Exception:
+            pass
+        
+        return None
+    
+    def _build_graph_post_id(self, url: str) -> str:
+        """
+        Build a Graph API compatible post ID from a resolved Facebook URL.
+        
+        Handles various URL patterns:
+        - /{page_name}/posts/{post_id} → {page_id}_{post_id}
+        - /permalink.php?story_fbid={id}&id={page_id} → {page_id}_{id}
+        - /reel/{reel_id} → {reel_id}
+        - /watch?v={video_id} → {video_id}
+        - /{page_name}/videos/{video_id} → {page_id}_{video_id}
+        
+        Args:
+            url: The resolved Facebook URL
+            
+        Returns:
+            A Graph API compatible post ID
+        """
+        parsed = urlparse(url)
+        path = parsed.path
+        query_params = parse_qs(parsed.query)
+        
+        # Pattern: /reel/{reel_id}
+        reel_match = re.search(r'/reel/(\d+)', path)
+        if reel_match:
+            return reel_match.group(1)
+        
+        # Pattern: /watch?v={video_id}
+        if '/watch' in path and 'v' in query_params:
+            video_id = query_params['v'][0]
+            return video_id
+        
+        # Pattern: /permalink.php?story_fbid={id}&id={page_id}
+        if '/permalink.php' in path:
+            story_fbid = query_params.get('story_fbid', [None])[0]
+            page_id = query_params.get('id', [None])[0]
+            if story_fbid and page_id:
+                return f"{page_id}_{story_fbid}"
+            elif story_fbid:
+                return story_fbid
+        
+        # Pattern: /{page_name}/posts/{post_id}
+        posts_match = re.search(r'/([^/]+)/posts/(\d+)', path)
+        if posts_match:
+            page_name = posts_match.group(1)
+            post_id = posts_match.group(2)
+            # Try to resolve page name to ID
+            page_id = self._resolve_page_name_to_id(page_name)
+            if page_id:
+                return f"{page_id}_{post_id}"
+            # Fall back to using page name (may work for some pages)
+            return f"{page_name}_{post_id}"
+        
+        # Pattern: /{page_name}/videos/{video_id}
+        videos_match = re.search(r'/([^/]+)/videos/(\d+)', path)
+        if videos_match:
+            page_name = videos_match.group(1)
+            video_id = videos_match.group(2)
+            # Try to resolve page name to ID
+            page_id = self._resolve_page_name_to_id(page_name)
+            if page_id:
+                return f"{page_id}_{video_id}"
+            # Fall back to using just the video ID
+            return video_id
+        
+        # Pattern: /story.php?story_fbid={id}
+        if '/story.php' in path:
+            story_fbid = query_params.get('story_fbid', [None])[0]
+            if story_fbid:
+                return story_fbid
+        
+        # Fallback: extract any numeric ID from the URL
+        numeric_match = re.search(r'/(\d{10,})', path)
+        if numeric_match:
+            return numeric_match.group(1)
+        
+        # Ultimate fallback: return hash of URL
+        return str(hash(url) % 10**8)
+    
     def fetch_comments(self, post_url: str) -> List[str]:
         """
         Fetch comments from Facebook post using the Facebook Graph API.
@@ -58,8 +267,15 @@ class AnalysisService:
                 "Please set FACEBOOK_ACCESS_TOKEN in your environment variables."
             )
         
-        # Extract post ID from URL
-        post_id = self.extract_post_id(post_url)
+        # Resolve share URLs to their final destination
+        working_url = post_url
+        if self._is_share_url(post_url):
+            working_url = self._resolve_share_url(post_url)
+            # Build the Graph API post ID from the resolved URL
+            post_id = self._build_graph_post_id(working_url)
+        else:
+            # Extract post ID from URL directly
+            post_id = self.extract_post_id(post_url)
         
         # Build the API URL
         api_url = (
