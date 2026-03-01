@@ -1,6 +1,6 @@
 import { useTheme } from "@/hooks";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun, Github, ExternalLink } from "lucide-react";
+import { Moon, Sun, User, ChevronDown } from "lucide-react";
 
 export function TopNavbar() {
   const { isDark, toggleTheme } = useTheme();
@@ -30,6 +30,12 @@ export function TopNavbar() {
               <Moon className="h-4 w-4 transition-transform hover:-rotate-12" />
             )}
           </Button>
+
+
+          <div className="flex items-center justify-center rounded-full">
+            <User className="size-6 text-gray-800 p-1"/>
+            <ChevronDown className='size-4 text-gray-800 ' />
+          </div>
           
         </div>
       </div>

@@ -54,6 +54,7 @@ class AnalysisService:
             "Perfect! Just what I needed!",
             "C'est vraiment magnifique! J'adore!",  # French positive
             "Je ne suis pas convaincu.",  # French neutral
+            "C'est horrible, je déteste ça.",  # French negative
         ]
         return mock_comments
     
