@@ -95,6 +95,8 @@ A production-ready SaaS web application that analyzes the sentiment of Facebook 
 6. Run the server:
    ```bash
    uvicorn app.main:app --reload
+
+   python3 -m uvicorn app.main:app --reload
    ```
 
 The API will be available at `http://localhost:8000`
