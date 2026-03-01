@@ -75,7 +75,11 @@ class AnalysisService:
             
         Returns:
             The resolved final URL after following redirects, or None if
-            resolution fails (e.g., Facebook blocks the request)
+            resolution fails. Resolution can fail due to:
+            - Invalid share URL format
+            - Network errors or timeouts
+            - HTTP errors (e.g., Facebook blocking the request with HTTP 400)
+            - Invalid or non-Facebook redirect destinations
         """
         # Extract share hash and construct a safe URL to prevent SSRF
         try:
