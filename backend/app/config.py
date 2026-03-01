@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
     
+    # Facebook Graph API
+    FACEBOOK_ACCESS_TOKEN: str = ""
+    FACEBOOK_API_VERSION: str = "v19.0"
+    
     class Config:
         env_file = ".env"
         extra = "ignore"  # <-- ignore unknown env vars
