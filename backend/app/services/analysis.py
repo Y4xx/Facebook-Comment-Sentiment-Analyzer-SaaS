@@ -62,7 +62,7 @@ class AnalysisService:
             raise ValueError(f"Invalid share URL format: {url}")
         return match.group(1), match.group(2)
     
-    def _resolve_share_url(self, url: str) -> str:
+    def _resolve_share_url(self, url: str) -> Optional[str]:
         """
         Resolve a Facebook share URL to its final destination URL.
         
@@ -74,13 +74,14 @@ class AnalysisService:
             url: The Facebook share URL to resolve
             
         Returns:
-            The resolved final URL after following redirects
-            
-        Raises:
-            ValueError: If the URL cannot be resolved or is not a valid Facebook URL
+            The resolved final URL after following redirects, or None if
+            resolution fails (e.g., Facebook blocks the request)
         """
         # Extract share hash and construct a safe URL to prevent SSRF
-        share_type, share_hash = self._extract_share_hash(url)
+        try:
+            share_type, share_hash = self._extract_share_hash(url)
+        except ValueError:
+            return None
         
         # Construct a safe Facebook URL using only the extracted hash
         # This prevents SSRF by ensuring we only request from www.facebook.com
@@ -102,10 +103,9 @@ class AnalysisService:
             with httpx.Client(follow_redirects=True, timeout=10.0) as client:
                 response = client.get(safe_url, headers=headers)
                 
+                # If Facebook returns an error, return None to trigger fallback
                 if response.status_code != 200:
-                    raise ValueError(
-                        f"Failed to resolve share URL: HTTP {response.status_code}"
-                    )
+                    return None
                 
                 final_url = str(response.url)
                 
@@ -114,26 +114,17 @@ class AnalysisService:
                     parsed = urlparse(final_url)
                     host = parsed.netloc.lower()
                     if parsed.scheme not in ('http', 'https'):
-                        raise ValueError(f"Invalid scheme in resolved URL: {final_url}")
+                        return None
                     if not any(host == d or host.endswith('.' + d) for d in allowed_domains):
-                        raise ValueError(
-                            f"Share URL redirected to non-Facebook URL: {final_url}"
-                        )
-                except Exception as e:
-                    if isinstance(e, ValueError):
-                        raise
-                    raise ValueError(f"Invalid resolved URL: {final_url}")
+                        return None
+                except Exception:
+                    return None
                 
                 return final_url
                 
-        except httpx.TimeoutException:
-            raise ValueError(
-                f"Timeout while resolving share URL: {url}"
-            )
-        except httpx.RequestError as e:
-            raise ValueError(
-                f"Failed to resolve share URL '{url}': {str(e)}"
-            )
+        except (httpx.TimeoutException, httpx.RequestError):
+            # Resolution failed, return None to trigger fallback
+            return None
     
     def _resolve_page_name_to_id(self, page_name: str) -> Optional[str]:
         """
@@ -268,11 +259,16 @@ class AnalysisService:
             )
         
         # Resolve share URLs to their final destination
-        working_url = post_url
         if self._is_share_url(post_url):
-            working_url = self._resolve_share_url(post_url)
-            # Build the Graph API post ID from the resolved URL
-            post_id = self._build_graph_post_id(working_url)
+            # Try to resolve the share URL to its final destination
+            resolved_url = self._resolve_share_url(post_url)
+            if resolved_url:
+                # Resolution succeeded, build the Graph API post ID from resolved URL
+                post_id = self._build_graph_post_id(resolved_url)
+            else:
+                # Resolution failed (e.g., Facebook blocked the request)
+                # Fall back to using the share hash directly as the post ID
+                post_id = self.extract_post_id(post_url)
         else:
             # Extract post ID from URL directly
             post_id = self.extract_post_id(post_url)
