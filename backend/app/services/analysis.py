@@ -1,10 +1,12 @@
 import re
 from typing import List, Dict, Tuple
 from sqlalchemy.orm import Session
+import httpx
 
 from app.models.analysis import Analysis
 from app.models.comment import Comment
 from app.ai.sentiment import SentimentAnalyzer
+from app.config import settings
 
 
 class AnalysisService:
@@ -18,6 +20,8 @@ class AnalysisService:
         """Extract Facebook post ID from URL."""
         # Various Facebook URL patterns
         patterns = [
+            r'facebook\.com/share/p/([\w]+)',  # Short share URL for posts
+            r'facebook\.com/share/r/([\w]+)',  # Short share URL for reels
             r'facebook\.com/(?:[\w\.]+)/posts/(\d+)',
             r'facebook\.com/(?:[\w\.]+)/videos/(\d+)',
             r'facebook\.com/story\.php\?story_fbid=(\d+)',
@@ -36,27 +40,77 @@ class AnalysisService:
     
     def fetch_comments(self, post_url: str) -> List[str]:
         """
-        Fetch comments from Facebook post.
-        NOTE: This is a mock implementation since Facebook Graph API
-        requires app approval. In production, integrate with Facebook API.
+        Fetch comments from Facebook post using the Facebook Graph API.
+        
+        Args:
+            post_url: The URL of the Facebook post
+            
+        Returns:
+            List of comment message strings
+            
+        Raises:
+            ValueError: If the access token is missing or the API returns an error
         """
-        # Mock comments for demonstration - in production use Facebook API
-        mock_comments = [
-            "This is absolutely amazing! Love it! ❤️",
-            "Great content, keep it up!",
-            "I'm not sure about this...",
-            "Could be better, but okay.",
-            "This is terrible, very disappointed 😞",
-            "Wonderful post! So inspiring!",
-            "Meh, nothing special.",
-            "Best thing I've seen today! 🔥",
-            "I disagree with this completely.",
-            "Perfect! Just what I needed!",
-            "C'est vraiment magnifique! J'adore!",  # French positive
-            "Je ne suis pas convaincu.",  # French neutral
-            "C'est horrible, je déteste ça.",  # French negative
-        ]
-        return mock_comments
+        # Validate access token
+        if not settings.FACEBOOK_ACCESS_TOKEN:
+            raise ValueError(
+                "Facebook access token is not configured. "
+                "Please set FACEBOOK_ACCESS_TOKEN in your environment variables."
+            )
+        
+        # Extract post ID from URL
+        post_id = self.extract_post_id(post_url)
+        
+        # Build the API URL
+        api_url = (
+            f"https://graph.facebook.com/{settings.FACEBOOK_API_VERSION}/"
+            f"{post_id}/comments"
+        )
+        
+        params = {
+            "fields": "message",
+            "limit": 100,
+            "access_token": settings.FACEBOOK_ACCESS_TOKEN,
+        }
+        
+        comments: List[str] = []
+        
+        with httpx.Client(timeout=30.0) as client:
+            while True:
+                response = client.get(api_url, params=params)
+                
+                if response.status_code != 200:
+                    try:
+                        error_data = response.json()
+                        error_message = error_data.get("error", {}).get(
+                            "message", "Unknown error"
+                        )
+                    except Exception:
+                        error_message = response.text or "Unknown error"
+                    raise ValueError(
+                        f"Facebook API error: {error_message}"
+                    )
+                
+                data = response.json()
+                
+                # Extract comment messages
+                for comment in data.get("data", []):
+                    message = comment.get("message")
+                    if message:
+                        comments.append(message)
+                
+                # Handle pagination
+                paging = data.get("paging", {})
+                next_url = paging.get("next")
+                
+                if not next_url:
+                    break
+                
+                # Use the next URL directly for pagination
+                api_url = next_url
+                params = {}  # Params are included in the next URL
+        
+        return comments
     
     def clean_text(self, text: str) -> str:
         """Clean and normalize comment text."""
