@@ -43,6 +43,25 @@ class AnalysisService:
         """Check if the URL is a Facebook share URL that needs resolution."""
         return '/share/p/' in url or '/share/r/' in url
     
+    def _extract_share_hash(self, url: str) -> tuple:
+        """
+        Extract the share type and hash from a Facebook share URL.
+        
+        Args:
+            url: The Facebook share URL
+            
+        Returns:
+            A tuple of (share_type, hash) where share_type is 'p' or 'r'
+            
+        Raises:
+            ValueError: If the URL is not a valid share URL
+        """
+        # Match /share/p/{hash} or /share/r/{hash}
+        match = re.search(r'/share/(p|r)/([\w]+)', url)
+        if not match:
+            raise ValueError(f"Invalid share URL format: {url}")
+        return match.group(1), match.group(2)
+    
     def _resolve_share_url(self, url: str) -> str:
         """
         Resolve a Facebook share URL to its final destination URL.
@@ -58,18 +77,30 @@ class AnalysisService:
             The resolved final URL after following redirects
             
         Raises:
-            ValueError: If the URL cannot be resolved
+            ValueError: If the URL cannot be resolved or is not a valid Facebook URL
         """
-        # Convert web.facebook.com to www.facebook.com
-        resolved_url = url.replace('web.facebook.com', 'www.facebook.com')
+        # Extract share hash and construct a safe URL to prevent SSRF
+        share_type, share_hash = self._extract_share_hash(url)
+        
+        # Construct a safe Facebook URL using only the extracted hash
+        # This prevents SSRF by ensuring we only request from www.facebook.com
+        safe_url = f"https://www.facebook.com/share/{share_type}/{share_hash}/"
         
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
         
+        # Define allowed Facebook domains for redirect validation
+        allowed_domains = (
+            'facebook.com',
+            'www.facebook.com',
+            'web.facebook.com',
+            'm.facebook.com',
+        )
+        
         try:
             with httpx.Client(follow_redirects=True, timeout=10.0) as client:
-                response = client.get(resolved_url, headers=headers)
+                response = client.get(safe_url, headers=headers)
                 
                 if response.status_code != 200:
                     raise ValueError(
@@ -77,6 +108,22 @@ class AnalysisService:
                     )
                 
                 final_url = str(response.url)
+                
+                # Validate the final URL is a Facebook URL
+                try:
+                    parsed = urlparse(final_url)
+                    host = parsed.netloc.lower()
+                    if parsed.scheme not in ('http', 'https'):
+                        raise ValueError(f"Invalid scheme in resolved URL: {final_url}")
+                    if not any(host == d or host.endswith('.' + d) for d in allowed_domains):
+                        raise ValueError(
+                            f"Share URL redirected to non-Facebook URL: {final_url}"
+                        )
+                except Exception as e:
+                    if isinstance(e, ValueError):
+                        raise
+                    raise ValueError(f"Invalid resolved URL: {final_url}")
+                
                 return final_url
                 
         except httpx.TimeoutException:
