@@ -74,9 +74,12 @@ class AnalysisService:
         }
         
         comments: List[str] = []
+        max_pages = 10  # Limit to prevent excessive API calls
+        page_count = 0
         
         with httpx.Client(timeout=30.0) as client:
-            while True:
+            while page_count < max_pages:
+                page_count += 1
                 response = client.get(api_url, params=params)
                 
                 if response.status_code != 200:
