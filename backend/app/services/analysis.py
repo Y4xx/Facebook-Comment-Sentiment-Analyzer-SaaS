@@ -3,7 +3,6 @@ from typing import List, Dict, Tuple, Optional
 from urllib.parse import urlparse, parse_qs
 from sqlalchemy.orm import Session
 import httpx
-import requests
 
 from app.models.analysis import Analysis
 from app.models.comment import Comment
@@ -69,26 +68,22 @@ class AnalysisService:
         }
         
         try:
-            response = requests.get(
-                resolved_url,
-                allow_redirects=True,
-                headers=headers,
-                timeout=10
-            )
-            
-            if response.status_code != 200:
-                raise ValueError(
-                    f"Failed to resolve share URL: HTTP {response.status_code}"
-                )
-            
-            final_url = response.url
-            return final_url
-            
-        except requests.exceptions.Timeout:
+            with httpx.Client(follow_redirects=True, timeout=10.0) as client:
+                response = client.get(resolved_url, headers=headers)
+                
+                if response.status_code != 200:
+                    raise ValueError(
+                        f"Failed to resolve share URL: HTTP {response.status_code}"
+                    )
+                
+                final_url = str(response.url)
+                return final_url
+                
+        except httpx.TimeoutException:
             raise ValueError(
                 f"Timeout while resolving share URL: {url}"
             )
-        except requests.exceptions.RequestException as e:
+        except httpx.RequestError as e:
             raise ValueError(
                 f"Failed to resolve share URL '{url}': {str(e)}"
             )
