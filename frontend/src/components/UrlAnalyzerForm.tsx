@@ -20,6 +20,22 @@ function isShareUrl(url: string): boolean {
 }
 
 /**
+ * Check if a hostname is a valid Facebook domain.
+ */
+function isFacebookDomain(hostname: string): boolean {
+  const validDomains = [
+    'facebook.com',
+    'www.facebook.com',
+    'web.facebook.com',
+    'm.facebook.com',
+    'fb.watch',
+    'www.fb.watch',
+  ];
+  const lowerHost = hostname.toLowerCase();
+  return validDomains.some(domain => lowerHost === domain || lowerHost.endsWith('.' + domain));
+}
+
+/**
  * Validate a Facebook URL and return validation result.
  */
 function validateFacebookUrl(url: string): { isValid: boolean; error: string } {
@@ -37,11 +53,19 @@ function validateFacebookUrl(url: string): { isValid: boolean; error: string } {
     };
   }
   
-  // Basic URL validation - must contain facebook.com or fb.watch
-  if (!trimmedUrl.includes('facebook.com') && !trimmedUrl.includes('fb.watch')) {
+  // Parse the URL and validate the hostname to prevent URL injection attacks
+  try {
+    const parsedUrl = new URL(trimmedUrl);
+    if (!isFacebookDomain(parsedUrl.hostname)) {
+      return {
+        isValid: false,
+        error: "Please enter a valid Facebook URL"
+      };
+    }
+  } catch {
     return {
       isValid: false,
-      error: "Please enter a valid Facebook URL"
+      error: "Please enter a valid URL"
     };
   }
   
