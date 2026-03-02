@@ -54,14 +54,29 @@ The application supports the following Facebook URL formats:
 
 | URL Format | Example |
 |------------|---------|
-| Short share URL (posts) | `https://web.facebook.com/share/p/1AxW47x5b2/` |
-| Short share URL (reels) | `https://web.facebook.com/share/r/1DVe2AfBDR/` |
 | Standard post URL | `https://facebook.com/username/posts/123456789` |
 | Video URL | `https://facebook.com/username/videos/123456789` |
 | Story URL | `https://facebook.com/story.php?story_fbid=123456789` |
-| Permalink | `https://facebook.com/permalink.php?story_fbid=123456789` |
+| Permalink | `https://facebook.com/permalink.php?story_fbid=123456789&id=PAGE_ID` |
+| Reel URL | `https://facebook.com/reel/123456789` |
 | fb.watch | `https://fb.watch/abcdef/` |
 | Photo URL | `https://facebook.com/username/photos/a.123/456789` |
+
+### Unsupported URL Formats
+
+**Share URLs are NOT supported** by the Facebook Graph API:
+
+| URL Format | Example | Status |
+|------------|---------|--------|
+| Share URL (posts) | `https://facebook.com/share/p/1AxW47x5b2/` | ❌ Not supported |
+| Share URL (reels) | `https://facebook.com/share/r/1DVe2AfBDR/` | ❌ Not supported |
+
+Share URLs do not contain valid Graph API post IDs. When a user provides a share URL, the application will display a helpful error message guiding them to use the direct post URL instead.
+
+**How to get the direct URL:**
+1. Open the Facebook post in your browser
+2. Click on the post's timestamp (date/time)
+3. Copy the URL from your browser's address bar
 
 ## API Endpoint
 
@@ -74,7 +89,7 @@ POST /api/analyses
 **Request Body:**
 ```json
 {
-  "facebook_post_url": "https://web.facebook.com/share/p/1AxW47x5b2/"
+  "facebook_post_url": "https://facebook.com/PageName/posts/123456789"
 }
 ```
 
@@ -82,7 +97,7 @@ POST /api/analyses
 ```json
 {
   "id": 1,
-  "post_url": "https://web.facebook.com/share/p/1AxW47x5b2/",
+  "post_url": "https://facebook.com/PageName/posts/123456789",
   "overall_sentiment": "positive",
   "overall_score": 3.8,
   "positive_count": 45,
