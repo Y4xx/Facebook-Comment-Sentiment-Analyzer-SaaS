@@ -23,8 +23,8 @@ class AnalysisService:
         patterns = [
             r'facebook\.com/(?:[\w\.]+)/posts/(\d+)',
             r'facebook\.com/(?:[\w\.]+)/videos/(\d+)',
-            r'facebook\.com/story\.php\?story_fbid=(\d+)',
-            r'facebook\.com/permalink\.php\?story_fbid=(\d+)',
+            r'facebook\.com/story\.php\?story_fbid=([\w]+)',
+            r'facebook\.com/permalink\.php\?story_fbid=([\w]+)',
             r'fb\.watch/([\w]+)',
             r'facebook\.com/(?:[\w\.]+)/photos/[\w\.]+/(\d+)',
             r'facebook\.com/reel/(\d+)',
@@ -301,8 +301,8 @@ class AnalysisService:
                 "Please set FACEBOOK_ACCESS_TOKEN in your environment variables."
             )
         
-        # Extract post ID from URL directly
-        post_id = self.extract_post_id(post_url)
+        # Build a Graph API compatible post ID from the URL
+        post_id = self._build_graph_post_id(post_url)
         
         # Build the API URL
         api_url = (
