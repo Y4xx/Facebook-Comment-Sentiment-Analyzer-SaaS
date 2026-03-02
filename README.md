@@ -4,7 +4,6 @@ A production-ready SaaS web application that analyzes the sentiment of Facebook 
 
 ## Features
 
-- 🔐 **JWT Authentication** - Secure user registration and login
 - 🧠 **AI-Powered Analysis** - BERT multilingual sentiment analysis
 - 📘 **Facebook Graph API Integration** - Fetch comments directly from Facebook posts and reels
 - 🌍 **Multilingual Support** - English, French, Arabic, and more
@@ -20,7 +19,6 @@ A production-ready SaaS web application that analyzes the sentiment of Facebook 
 - **SQLAlchemy** ORM with SQLite
 - **HuggingFace Transformers** with BERT model
 - **Facebook Graph API** for fetching comments
-- **JWT** authentication with bcrypt password hashing
 
 ### Frontend
 - **React 18** with TypeScript
@@ -36,7 +34,7 @@ A production-ready SaaS web application that analyzes the sentiment of Facebook 
 ├── backend/
 │   ├── app/
 │   │   ├── ai/              # BERT sentiment analysis
-│   │   ├── api/             # API routes (auth, analysis)
+│   │   ├── api/             # API routes (analysis)
 │   │   ├── models/          # SQLAlchemy models
 │   │   ├── schemas/         # Pydantic schemas
 │   │   ├── services/        # Business logic
@@ -191,14 +189,6 @@ The application supports the following Facebook URL formats:
 
 ## API Endpoints
 
-### Authentication
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/auth/register` | Register a new user |
-| POST | `/auth/login` | Login and get JWT token |
-| GET | `/auth/me` | Get current user info |
-
 ### Analysis
 
 | Method | Endpoint | Description |
@@ -319,7 +309,3 @@ For more details, see [Facebook Rate Limiting](https://developers.facebook.com/d
 3. Use short-lived tokens in development and long-lived tokens in production
 4. Regularly rotate access tokens
 5. Monitor API usage for unusual activity
-
-## License
-
-MIT License
