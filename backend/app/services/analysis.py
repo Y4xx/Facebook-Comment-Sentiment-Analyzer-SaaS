@@ -19,16 +19,15 @@ class AnalysisService:
     
     def extract_post_id(self, url: str) -> str:
         """Extract Facebook post ID from URL."""
-        # Various Facebook URL patterns
+        # Various Facebook URL patterns (note: share URLs are rejected in validate_url)
         patterns = [
-            r'facebook\.com/share/p/([\w]+)',  # Short share URL for posts
-            r'facebook\.com/share/r/([\w]+)',  # Short share URL for reels
             r'facebook\.com/(?:[\w\.]+)/posts/(\d+)',
             r'facebook\.com/(?:[\w\.]+)/videos/(\d+)',
             r'facebook\.com/story\.php\?story_fbid=(\d+)',
             r'facebook\.com/permalink\.php\?story_fbid=(\d+)',
             r'fb\.watch/([\w]+)',
             r'facebook\.com/(?:[\w\.]+)/photos/[\w\.]+/(\d+)',
+            r'facebook\.com/reel/(\d+)',
         ]
         
         for pattern in patterns:
@@ -242,6 +241,41 @@ class AnalysisService:
         # Ultimate fallback: return hash of URL
         return str(hash(url) % 10**8)
     
+    def validate_url(self, url: str) -> Tuple[bool, str]:
+        """
+        Validate a Facebook URL format.
+        
+        Args:
+            url: The Facebook URL to validate
+            
+        Returns:
+            A tuple of (is_valid, error_message). If is_valid is True,
+            error_message will be empty.
+        """
+        # Check if it's a share URL
+        if self._is_share_url(url):
+            return (False, (
+                "Share URLs (facebook.com/share/p/...) are not supported by the Facebook Graph API. "
+                "Please use a direct post URL instead:\n\n"
+                "How to get the direct URL:\n"
+                "1. Open the Facebook post in your browser\n"
+                "2. Click on the post's timestamp (date/time)\n"
+                "3. Copy the URL from your browser's address bar\n\n"
+                "Supported URL formats:\n"
+                "• facebook.com/PageName/posts/123456789\n"
+                "• facebook.com/permalink.php?story_fbid=POST_ID&id=PAGE_ID\n"
+                "• facebook.com/PageName/videos/123456789"
+            ))
+        
+        # Check if URL contains facebook.com
+        if 'facebook.com' not in url and 'fb.watch' not in url:
+            return (False, (
+                "Please enter a valid Facebook URL. "
+                "The URL should be from facebook.com."
+            ))
+        
+        return (True, "")
+    
     def fetch_comments(self, post_url: str) -> List[str]:
         """
         Fetch comments from Facebook post using the Facebook Graph API.
@@ -255,6 +289,11 @@ class AnalysisService:
         Raises:
             ValueError: If the access token is missing or the API returns an error
         """
+        # Validate URL format first
+        is_valid, error_message = self.validate_url(post_url)
+        if not is_valid:
+            raise ValueError(error_message)
+        
         # Validate access token
         if not settings.FACEBOOK_ACCESS_TOKEN:
             raise ValueError(
@@ -262,20 +301,8 @@ class AnalysisService:
                 "Please set FACEBOOK_ACCESS_TOKEN in your environment variables."
             )
         
-        # Resolve share URLs to their final destination
-        if self._is_share_url(post_url):
-            # Try to resolve the share URL to its final destination
-            resolved_url = self._resolve_share_url(post_url)
-            if resolved_url:
-                # Resolution succeeded, build the Graph API post ID from resolved URL
-                post_id = self._build_graph_post_id(resolved_url)
-            else:
-                # Resolution failed (e.g., Facebook blocked the request)
-                # Fall back to using the share hash directly as the post ID
-                post_id = self.extract_post_id(post_url)
-        else:
-            # Extract post ID from URL directly
-            post_id = self.extract_post_id(post_url)
+        # Extract post ID from URL directly
+        post_id = self.extract_post_id(post_url)
         
         # Build the API URL
         api_url = (
