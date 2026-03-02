@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
-  BarChart3,
+  User,
   Home,
   PlusCircle,
   History,
@@ -34,8 +34,8 @@ function NavContent({ location, onLinkClick }: NavContentProps) {
           <Brain className="h-6 w-6 text-primary" />
         </div>
         <div className="flex flex-col">
-          <span className="font-bold text-lg tracking-tight">Sentiment</span>
-          <span className="text-xs text-muted-foreground -mt-0.5">Analyzer</span>
+          <span className="font-bold text-lg tracking-tight">FeelUp</span>
+          <span className="text-xs text-muted-foreground -mt-0.5">Sentiment Analyzer</span>
         </div>
       </div>
 
@@ -66,11 +66,11 @@ function NavContent({ location, onLinkClick }: NavContentProps) {
       <div className="px-4 py-4 border-t border-border/50">
         <div className="flex items-center gap-3 px-2">
           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/5">
-            <BarChart3 className="h-4 w-4 text-primary" />
+            <User className="h-4 w-4 text-primary" />
           </div>
           <div className="flex flex-col">
-            <span className="text-xs font-medium">AI-Powered</span>
-            <span className="text-xs text-muted-foreground">BERT Multilingual</span>
+            <span className="text-xs font-medium">Yassine OUJAMA</span>
+            <span className="text-xs text-muted-foreground">yassine.oujama@gmail.com</span>
           </div>
         </div>
       </div>

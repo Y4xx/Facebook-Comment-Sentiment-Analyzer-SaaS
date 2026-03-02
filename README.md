@@ -130,6 +130,10 @@ For production:
    ```bash
    uvicorn app.main:app --reload
    ```
+   or with
+   ```bash
+   python3 -m uvicorn app.main:app --reload
+   ```
 
 The API will be available at `http://localhost:8000`
 

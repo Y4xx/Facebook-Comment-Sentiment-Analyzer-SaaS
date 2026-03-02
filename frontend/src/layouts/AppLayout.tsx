@@ -23,7 +23,7 @@ export function AppLayout() {
         <footer className="border-t bg-card/50 backdrop-blur-sm">
           <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-center">
             <p className="text-sm text-muted-foreground">
-              © 2024 Sentiment Analyzer. Built with AI-powered sentiment analysis.
+              © 2026 FeelUp. Built with AI-powered sentiment analysis.
             </p>
           </div>
         </footer>
